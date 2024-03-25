@@ -545,7 +545,8 @@ class CamusProvider(Plugin):
                     ],
                     name="step"
                 ),
-                pd.date_range("2023-10-28T00:00", "2023-10-30T12:00", freq="15min", name="valid_time")
+                # Must start the valid time range at 15 minutes after!
+                pd.date_range("2023-10-28T00:15", "2023-10-30T12:00", freq="15min", name="valid_time")
             ]
 
         elif "gfs-atmos-pgrb2-0p25" in dataset_id:
@@ -557,7 +558,7 @@ class CamusProvider(Plugin):
                     ],
                     name="step"
                 ),
-                pd.date_range("2023-10-28T00:00", "2023-10-30T12:00", freq="60min", name="valid_time")
+                pd.date_range("2023-10-28T00:00", "2023-10-30T00:00", freq="60min", name="valid_time")
             ]
 
         else:
@@ -567,8 +568,6 @@ class CamusProvider(Plugin):
         k_index = get_kerchunk_index(axes, dataset_vars, dataset_index)
 
         logger.warning("Got %d chunks for dset %s with %s axes", len(k_index), dataset_id, axes)
-
-        logger.warning(k_index.head(10))
 
         # Use the kerchunk index to reinflate the zarr store - inserting the references for the variables
         zstore = reinflate_grib_store(
@@ -587,12 +586,20 @@ class CamusProvider(Plugin):
 
         ds = dtree[dataset_vars[0]].to_dataset().squeeze()
 
-        for dname in dataset_vars[1:]:
-            dset = dtree[dname].to_dataset().squeeze()
-            vname = dname.split('/')[0]
-            ds[vname] = dset[vname]
 
-        logger.warning("DS: %s", ds)
+
+        for dname in dataset_vars:
+            dset = dtree[dname].to_dataset().squeeze()
+            split_name = dname.split('/')
+
+            # Drop it an add it back with fully qualified name
+            if split_name[0] in ds:
+                ds.drop(split_name[0])
+
+            ds["_".join(split_name)] = dset[split_name[0]]
+
+
+        logger.warning("%s: %s", dataset_id, ds)
 
         # When to add this - does it help?
         #ds = ds.rio.write_crs(4326)
