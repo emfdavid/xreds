@@ -527,18 +527,28 @@ class CamusProvider(Plugin):
         dataset_metadata = dataset_spec["metadata"]
 
 
-        if "hrrr" in dataset_id:
+        if "hrrr-conus-sfcf" == dataset_id:
             axes = [
                 pd.Index(
                     [
-                        #pd.timedelta_range(start="0 minutes", end="60 minutes", freq="60min", closed="left", name="000 hour"),
                         pd.timedelta_range(start="300 minutes", end="360 minutes", freq="60min", closed="left", name="005 hour"),
                     ],
                     name="step"
                 ),
                 pd.date_range("2023-10-28T00:00", "2023-10-30T12:00", freq="60min", name="valid_time")
             ]
-        elif "gfs" in dataset_id:
+        elif "hrrr-conus-subhf" == dataset_id:
+            axes = [
+                pd.Index(
+                    [
+                        pd.timedelta_range(start="120 minutes", end="180 minutes", freq="15min", closed="right", name="003 hour"),
+                    ],
+                    name="step"
+                ),
+                pd.date_range("2023-10-28T00:00", "2023-10-30T12:00", freq="15min", name="valid_time")
+            ]
+
+        elif "gfs-atmos-pgrb2-0p25" in dataset_id:
 
             axes = [
                 pd.Index(
@@ -547,14 +557,18 @@ class CamusProvider(Plugin):
                     ],
                     name="step"
                 ),
-                pd.date_range("2023-10-28T01:00", "2023-10-30T13:00", freq="60min", name="valid_time")
+                pd.date_range("2023-10-28T00:00", "2023-10-30T12:00", freq="60min", name="valid_time")
             ]
 
         else:
-            raise RuntimeError("Fooo bar!")
+            raise RuntimeError("Unknown dataset id %s", dataset_id)
 
         # Get the kerchunk index for the axes given variables and NODD model.
         k_index = get_kerchunk_index(axes, dataset_vars, dataset_index)
+
+        logger.warning("Got %d chunks for dset %s with %s axes", len(k_index), dataset_id, axes)
+
+        logger.warning(k_index.head(10))
 
         # Use the kerchunk index to reinflate the zarr store - inserting the references for the variables
         zstore = reinflate_grib_store(
@@ -571,9 +585,17 @@ class CamusProvider(Plugin):
             consolidated=False,
         )
 
-        ds = dtree[dataset_vars[1]].to_dataset().squeeze()
+        ds = dtree[dataset_vars[0]].to_dataset().squeeze()
+
+        for dname in dataset_vars[1:]:
+            dset = dtree[dname].to_dataset().squeeze()
+            vname = dname.split('/')[0]
+            ds[vname] = dset[vname]
 
         logger.warning("DS: %s", ds)
+
+        # When to add this - does it help?
+        #ds = ds.rio.write_crs(4326)
 
         if "coords" in dataset_spec:
             # HRRR
@@ -583,12 +605,10 @@ class CamusProvider(Plugin):
             ds["x"] = (("x",), da.from_array(coords_data.x.values, chunks=coords_data.x.shape))
             ds["y"] = (("y",), da.from_array(coords_data.y.values, chunks=coords_data.y.shape))
 
+            # Must drop scalar vertical coordinate till frontend bug is fixed
             ds = ds.drop_vars(["step", "time", "heightAboveGround"])
 
-
-            ds.t2m.attrs["crs"] = "+proj=lcc lon_0=262.5 lat_0=38.5 lat_1=38.5 lat_2=38.5"
-
-
+            # In order, assign the cords, build the index, set the attrs
             # Assign the coordinates
             ds = ds.assign_coords(
                 valid_times=ds.valid_time,
@@ -598,9 +618,6 @@ class CamusProvider(Plugin):
 
             # Set the index
             ds = ds.set_index(valid_times="valid_time")
-
-
-            ds = ds.rio.write_crs(4326)
 
             # Add the attributes
             ds.x.attrs["axis"] = "X"
@@ -617,23 +634,22 @@ class CamusProvider(Plugin):
             ds.valid_times.attrs['standard_name'] = 'time'
 
             #ds.longitude.attrs["axis"] = "Y"
-            # ds.longitude.attrs["long_name"] = "longitude"
-            # ds.latitude.attrs["standard_name"] = "longitude"
-            # ds.latitude.attrs["units"] = "degrees_east"
+            ds.longitude.attrs["long_name"] = "longitude"
+            ds.latitude.attrs["standard_name"] = "longitude"
+            ds.latitude.attrs["units"] = "degrees_east"
 
             #ds.latitude.attrs["axis"] = "X"
-            # ds.latitude.attrs["long_name"] = "latitude"
-            # ds.latitude.attrs["standard_name"] = "latitude"
-            # ds.latitude.attrs["units"] = "degrees_north"
+            ds.latitude.attrs["long_name"] = "latitude"
+            ds.latitude.attrs["standard_name"] = "latitude"
+            ds.latitude.attrs["units"] = "degrees_north"
 
         else:
             # Drop vars that break stuff
-            ds = ds.drop_vars(["step", "time", "surface"])
+            #ds = ds.drop_vars(["step", "time", "surface"])
+            # Must drop scalar vertical coordinate till frontend bug is fixed
+            ds = ds.drop_vars(["step", "time", "heightAboveGround"])
 
-            # Assign attrs
-            ds.latitude.attrs["axis"] = "Y"
-            ds.longitude.attrs["axis"] = "X"
-
+            # In order, assign the cords, build the index, set the attrs
             # Assign coords
             ds = ds.assign_coords(
                 valid_times=ds.valid_time,
@@ -647,8 +663,8 @@ class CamusProvider(Plugin):
             # Assign names
             ds.valid_times.attrs["axis"] = "T"
             ds.valid_times.attrs['standard_name'] = 'time'
-
-
+            ds.latitude.attrs["axis"] = "Y"
+            ds.longitude.attrs["axis"] = "X"
 
         logger.warning("%s\n%s", dataset_id, ds.cf)
 

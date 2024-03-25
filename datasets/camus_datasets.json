@@ -2,7 +2,35 @@
   "hrrr-conus-sfcf": {
     "metadata_path": "gs://inbox.prod.camus-infra.camus.store/nodd/hrrr/conus/sfcf/metadata/v1.0/zarr_tree_store.json.gz",
     "index": "camus-infra.nodd_index_metadata.nodd-hrrr-conus-sfcf-v1-0_MV",
-    "variables": ["dswrf/instant/surface", "t2m/instant/heightAboveGround", "vddsf/instant/surface"]
+    "variables": [
+      "t2m/instant/heightAboveGround",
+      "d2m/instant/heightAboveGround",
+      "r2/instant/heightAboveGround",
+      "u10/instant/heightAboveGround",
+      "v10/instant/heightAboveGround",
+      "si10/max/heightAboveGround",
+      "dswrf/instant/surface",
+      "vddsf/instant/surface",
+      "vbdsf/instant/surface",
+      "prate/instant/surface"
+    ]
+  },
+  "hrrr-conus-subhf": {
+    "metadata_path": "gs://inbox.prod.camus-infra.camus.store/nodd/hrrr/conus/subhf/metadata/v1.0/zarr_tree_store.json.gz",
+    "index": "camus-infra.nodd_index_metadata.nodd-hrrr-conus-subhf-v1-0_MV",
+    "variables": [
+      "t2m/instant/heightAboveGround",
+      "d2m/instant/heightAboveGround",
+      "sh2/instant/heightAboveGround",
+      "u10/instant/heightAboveGround",
+      "v10/instant/heightAboveGround",
+      "si10/avg/heightAboveGround",
+      "dswrf/instant/surface",
+      "dswrf/avg/surface",
+      "vddsf/instant/surface",
+      "vbdsf/instant/surface",
+      "prate/instant/surface"
+    ]
   },
   "gfs-atmos-pgrb2-0p25": {
     "metadata_path":"gs://inbox.prod.camus-infra.camus.store/nodd/gfs/atmos/pgrb2.0p25/metadata/v1.0/zarr_tree_store.json.gz",
@@ -10,7 +38,14 @@
     "variables": [
       "dswrf/avg/surface",
       "t/instant/surface",
-      "sp/instant/surface"
+      "t2m/instant/heightAboveGround",
+      "d2m/instant/heightAboveGround",
+      "r2/instant/heightAboveGround",
+      "u10/instant/heightAboveGround",
+      "v10/instant/heightAboveGround",
+      "sp/instant/surface",
+      "prate/instant/surface",
+      "gust/instant/surface"
     ]
   }
 }
