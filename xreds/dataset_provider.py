@@ -114,6 +114,8 @@ class DatasetProvider(Plugin):
         except:
             pass
 
+        logger.warning("Dataset %s\n%s", dataset_id, ds.cf)
+
         self.datasets[cache_key] = {
             'dataset': ds,
             'date': datetime.datetime.now()

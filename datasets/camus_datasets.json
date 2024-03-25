@@ -1,0 +1,16 @@
+{
+  "hrrr-conus-sfcf": {
+    "metadata_path": "gs://inbox.prod.camus-infra.camus.store/nodd/hrrr/conus/sfcf/metadata/v1.0/zarr_tree_store.json.gz",
+    "index": "camus-infra.nodd_index_metadata.nodd-hrrr-conus-sfcf-v1-0_MV",
+    "variables": ["dswrf/instant/surface", "t2m/instant/heightAboveGround", "vddsf/instant/surface"]
+  },
+  "gfs-atmos-pgrb2-0p25": {
+    "metadata_path":"gs://inbox.prod.camus-infra.camus.store/nodd/gfs/atmos/pgrb2.0p25/metadata/v1.0/zarr_tree_store.json.gz",
+    "index": "camus-infra.nodd_index_metadata.nodd-gfs-atmos-pgrb2-0p25-v1-0_MV",
+    "variables": [
+      "dswrf/avg/surface",
+      "t/instant/surface",
+      "sp/instant/surface"
+    ]
+  }
+}

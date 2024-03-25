@@ -5,10 +5,12 @@ import xpublish
 from fastapi.middleware.cors import CORSMiddleware
 
 from xreds.spastaticfiles import SPAStaticFiles
-from xreds.dataset_provider import DatasetProvider
-
+#from xreds.dataset_provider import DatasetProvider
+from xreds.camus_provider import CamusProvider
 
 logger = logging.getLogger("uvicorn")
+
+
 
 gunicorn_logger = logging.getLogger('gunicorn.error')
 logger.handlers = gunicorn_logger.handlers
@@ -28,7 +30,8 @@ rest = xpublish.Rest(
     datasets=None
 )
 
-rest.register_plugin(DatasetProvider())
+rest.register_plugin(CamusProvider())
+#rest.register_plugin(DatasetProvider())
 
 app = rest.app
 
@@ -50,7 +53,7 @@ if __name__ == '__main__':
     # When run directly, run in debug mode 
     uvicorn.run(
         "app:app", 
-        port = 8090, 
+        port = 8080,
         reload = True, 
         log_level = 'debug', 
         debug = True
