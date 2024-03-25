@@ -558,7 +558,7 @@ class CamusProvider(Plugin):
                     ],
                     name="step"
                 ),
-                pd.date_range("2023-10-28T00:00", "2023-10-30T00:00", freq="60min", name="valid_time")
+                pd.date_range("2023-10-28T01:00", "2023-10-30T00:00", freq="60min", name="valid_time")
             ]
 
         else:
@@ -592,9 +592,9 @@ class CamusProvider(Plugin):
             dset = dtree[dname].to_dataset().squeeze()
             split_name = dname.split('/')
 
-            # Drop it an add it back with fully qualified name
-            if split_name[0] in ds:
-                ds.drop(split_name[0])
+            # Drop the first var an add it back with fully qualified name
+            if split_name[0] in ds.variables.keys():
+                ds = ds.drop(split_name[0])
 
             ds["_".join(split_name)] = dset[split_name[0]]
 
