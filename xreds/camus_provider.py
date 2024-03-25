@@ -29,15 +29,9 @@ import copy
 
 import dask.array as da
 
-# import cachey
-# from pydantic import Field
-# from fastapi import Depends
-# from xpublish.dependencies import get_cache
-
 import base64
 
 import gzip
-import fsspec
 import pandas as pd
 from google.cloud import bigquery
 
@@ -581,38 +575,34 @@ class CamusProvider(Plugin):
 
         logger.warning("DS: %s", ds)
 
-        if "coords" in dataset_spec: # HRRR
-            coords_data = dataset_spec["coords"]
+        if "coords" in dataset_spec:
+            # HRRR
 
+            # Add the project coordinate variables
+            coords_data = dataset_spec["coords"]
             ds["x"] = (("x",), da.from_array(coords_data.x.values, chunks=coords_data.x.shape))
             ds["y"] = (("y",), da.from_array(coords_data.y.values, chunks=coords_data.y.shape))
 
             ds = ds.drop_vars(["step", "time", "heightAboveGround"])
 
-            #ds.t2m.attrs["coordinates"] = "x y"
-            # ds.t2m.attrs["coordinates"] = "latitude longitude"
+
             ds.t2m.attrs["crs"] = "+proj=lcc lon_0=262.5 lat_0=38.5 lat_1=38.5 lat_2=38.5"
 
 
+            # Assign the coordinates
             ds = ds.assign_coords(
                 valid_times=ds.valid_time,
                 y=ds.y,
                 x=ds.x,
-                # latitude=(("y","x"), ds.latitude.values),
-                # longitude=(("y", "x"), ds.longitude.values),
-                # latitude=ds.latitude,
-                # longitude=ds.longitude,
             )
+
+            # Set the index
             ds = ds.set_index(valid_times="valid_time")
 
-            # ds = ds.assign_coords(
-            #     valid_time=ds.valid_time,
-            #     latitude=ds.latitude,
-            #     longitude=(((ds.longitude + 180) % 360) - 180),
-            # )#.sortby(['longitude', 'latitude', 'valid_time'])
-            # TODO: Yeah this should not be assumed... but for regular grids we will viz with rioxarray so for now we will assume
+
             ds = ds.rio.write_crs(4326)
 
+            # Add the attributes
             ds.x.attrs["axis"] = "X"
             ds.x.attrs["long_name"] = "x coordinate of projection"
             ds.x.attrs["standard_name"] = "projection_x_coordinate"
@@ -636,67 +626,38 @@ class CamusProvider(Plugin):
             # ds.latitude.attrs["standard_name"] = "latitude"
             # ds.latitude.attrs["units"] = "degrees_north"
 
-            #ds = ds.rename(dict(longitude="x", latitude="y", valid_time="time"))
-
-            #ds = ds.drop_vars(["heightAboveGround",])
-
-        else: # GFS
+        else:
+            # Drop vars that break stuff
             ds = ds.drop_vars(["step", "time", "surface"])
-            # ds.t.attrs["y"] = "latitude"
-            # ds.t.attrs["x"] = "longitude"
-            #ds = ds.rename_dims(dict(latitude="lat", longitude="lon"))
 
+            # Assign attrs
             ds.latitude.attrs["axis"] = "Y"
             ds.longitude.attrs["axis"] = "X"
 
-
+            # Assign coords
             ds = ds.assign_coords(
                 valid_times=ds.valid_time,
                 latitude=ds.latitude,
                 longitude=(((ds.longitude + 180) % 360) - 180),
-            )#.sortby(['longitude', 'latitude', 'valid_time'])
-            # TODO: Yeah this should not be assumed... but for regular grids we will viz with rioxarray so for now we will assume
-            #ds = ds.rio.write_crs(4326)
+            )
 
+            # Set index
             ds = ds.set_index(valid_times="valid_time")
 
+            # Assign names
             ds.valid_times.attrs["axis"] = "T"
             ds.valid_times.attrs['standard_name'] = 'time'
-            #ds = ds.rename(dict(longitude="x", latitude="y", valid_time="time"))
-            #ds = ds.rename(dict(longitude="x", latitude="y"))
-            #
-            # ds = ds[["y", "x", "valid_time", "t"]]
 
-            #ds = ds.reset_coords()
-            #ds = ds.rename_vars(dict(latitude="y", longitude="x"))
-
-            # ds = ds.assign_coords(
-            #     y =ds.y,
-            #     x =ds.x,
-            #     valid_time=ds.valid_time
-            # )
 
 
         logger.warning("%s\n%s", dataset_id, ds.cf)
-
-        # TRY SAVE AND LOAD???
-        #
-        # ds = ds.load()
-        # ds.to_zarr(f"/tmp/xreds/{dataset_id}.zarr", consolidated=True)
-        #
-        # logger.warning("reloading %s zarr!", dataset_id)
-        # ds = xr.open_dataset(f"/tmp/xreds/{dataset_id}.zarr", engine="zarr")
-
-        #ds = ds.transpose()
-
 
         self.datasets[cache_key] = {
             'dataset': ds,
             'date': datetime.datetime.now()
         }
 
-        #cache.put(cache_key, ds, 50)
-        if cache_key in self.datasets: 
+        if cache_key in self.datasets:
             logger.info(f'Loaded and cached dataset for {dataset_id}')
         else: 
             logger.info(f'Loaded dataset for {dataset_id}. Not cached due to size or current cache score')
