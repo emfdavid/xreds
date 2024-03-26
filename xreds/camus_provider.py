@@ -512,6 +512,10 @@ class CamusProvider(Plugin):
 
         dataset_horizon_mapping = {}
         for key, dataset_spec in dataset_mapping.items():
+            ## Filter datasets for testing
+            # if "gfs" not in key:
+            #     continue
+
             for horizon in HORIZONS[key]:
                 dspec = copy.deepcopy(dataset_spec)
                 dspec["horizon"] = horizon
@@ -555,61 +559,47 @@ class CamusProvider(Plugin):
                 if dataset_horizon > np.timedelta64(18, "h")
                 else np.timedelta64(1, "h")
             )
-
-            selected_horizons = pd.timedelta_range(
-                start=dataset_horizon - runtime_step,
-                end=dataset_horizon,
-                freq="60min",
-                closed="right",
-                name=f"{dataset_horizon.astype(int)} hour"
-            )
-            start = dataset_tstamp.floor("D") - np.timedelta64(1, "D")
-            naive_first_runtime = start - selected_horizons[0]
-
-            runtime_offset = (
-                    pd.Timestamp(naive_first_runtime).floor(pd.Timedelta(runtime_step))
-                    - naive_first_runtime
-            )
-
-            axes = [
-                pd.Index(
-                    [selected_horizons],
-                    name="step"
-                ),
-                pd.date_range(
-                    start=start - runtime_step + runtime_offset,
-                    end=dataset_tstamp.floor("h") + dataset_horizon,
-                    freq="60min",
-                    name="valid_time"
-                )
-            ]
-
+            data_step = pd.Timedelta(1, unit="h")
         elif dataset_id.startswith("hrrr-conus-subhf"):
-            axes = [
-                pd.Index(
-                    [
-                        pd.timedelta_range(start="120 minutes", end="180 minutes", freq="15min", closed="right", name="003 hour"),
-                    ],
-                    name="step"
-                ),
-                # Must start the valid time range at 15 minutes after!
-                pd.date_range("2023-10-28T00:15", "2023-10-30T12:00", freq="15min", name="valid_time")
-            ]
-
+            runtime_step = np.timedelta64(1, "h")
+            data_step = pd.Timedelta(15, unit="m")
         elif dataset_id.startswith("gfs-atmos-pgrb2-0p25"):
-
-            axes = [
-                pd.Index(
-                    [
-                        pd.timedelta_range(start="360 minutes", end="720 minutes", freq="60min", closed="right", name="6-12 hour"),
-                    ],
-                    name="step"
-                ),
-                pd.date_range("2023-10-28T01:00", "2023-10-30T00:00", freq="60min", name="valid_time")
-            ]
-
+            runtime_step = np.timedelta64(6, "h")
+            data_step = (
+                pd.Timedelta(3, unit="h")
+                if dataset_horizon > np.timedelta64(120, "h")
+                else pd.Timedelta(1, unit="h")
+            )
         else:
             raise RuntimeError("Unknown dataset id %s", dataset_id)
+
+        selected_horizons = pd.timedelta_range(
+            start=dataset_horizon - runtime_step,
+            end=dataset_horizon,
+            freq=data_step,
+            closed="right",
+            name=f"{dataset_horizon.astype(int)} hour"
+        )
+        start = dataset_tstamp.floor("D") - np.timedelta64(1, "D")
+        naive_first_runtime = start - selected_horizons[0]
+
+        runtime_offset = (
+                pd.Timestamp(naive_first_runtime).floor(pd.Timedelta(runtime_step))
+                - naive_first_runtime
+        )
+
+        axes = [
+            pd.Index(
+                [selected_horizons],
+                name="step"
+            ),
+            pd.date_range(
+                start=start - runtime_step + runtime_offset,
+                end=dataset_tstamp.floor("h") + dataset_horizon,
+                freq=data_step,
+                name="valid_time"
+            )
+        ]
 
         # Get the kerchunk index for the axes given variables and NODD model.
         k_index = get_kerchunk_index(axes, dataset_vars, dataset_index)
