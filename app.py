@@ -10,8 +10,6 @@ from xreds.camus_provider import CamusProvider
 
 logger = logging.getLogger("uvicorn")
 
-
-
 gunicorn_logger = logging.getLogger('gunicorn.error')
 logger.handlers = gunicorn_logger.handlers
 if __name__ != "main":
@@ -53,8 +51,8 @@ if __name__ == '__main__':
     # When run directly, run in debug mode 
     uvicorn.run(
         "app:app", 
-        port = 8080,
-        reload = True, 
-        log_level = 'debug', 
-        debug = True
+        port=8080,
+        reload=False,
+        log_level='info',
+        debug=False
     )

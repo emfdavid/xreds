@@ -536,7 +536,7 @@ class CamusProvider(Plugin):
 
         cached_ds = self.datasets.get(cache_key, None)
         if cached_ds:
-            if (datetime.datetime.now() - cached_ds['date']).seconds < (10 * 60):
+            if (datetime.datetime.now() - cached_ds['date']).seconds < (15 * 60):
                 logger.info(f'Using cached dataset for {dataset_id}')
                 return cached_ds['dataset']
             else:
@@ -545,6 +545,7 @@ class CamusProvider(Plugin):
         else:
             logger.info(f'No dataset found in cache for {dataset_id}, loading...')
 
+        # Build the dataset if it isn't cached
 
         dataset_spec = self.dataset_mapping[dataset_id]
         dataset_index = dataset_spec["index"]
@@ -604,7 +605,7 @@ class CamusProvider(Plugin):
         # Get the kerchunk index for the axes given variables and NODD model.
         k_index = get_kerchunk_index(axes, dataset_vars, dataset_index)
 
-        logger.warning("Got %d chunks for dset %s with %s axes", len(k_index), dataset_id, axes)
+        logger.info("Got %d chunks for dset %s with %s axes", len(k_index), dataset_id, axes)
 
         # Use the kerchunk index to reinflate the zarr store - inserting the references for the variables
         zstore = reinflate_grib_store(
@@ -623,8 +624,6 @@ class CamusProvider(Plugin):
 
         ds = dtree[dataset_vars[0]].to_dataset().squeeze()
 
-
-
         for dname in dataset_vars:
             dset = dtree[dname].to_dataset().squeeze()
             split_name = dname.split('/')
@@ -635,8 +634,7 @@ class CamusProvider(Plugin):
 
             ds["_".join(split_name)] = dset[split_name[0]]
 
-
-        logger.warning("%s: %s", dataset_id, ds)
+        logger.info("%s: %s", dataset_id, ds)
 
         # When to add this - does it help?
         #ds = ds.rio.write_crs(4326)
@@ -710,7 +708,8 @@ class CamusProvider(Plugin):
             ds.latitude.attrs["axis"] = "Y"
             ds.longitude.attrs["axis"] = "X"
 
-        logger.warning("%s\n%s", dataset_id, ds.cf)
+        # Print the CF metadata and cache the dataset
+        logger.info("%s\n%s", dataset_id, ds.cf)
 
         self.datasets[cache_key] = {
             'dataset': ds,
