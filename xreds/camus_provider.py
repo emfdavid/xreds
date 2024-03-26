@@ -477,6 +477,13 @@ def read_store(fpath: str) -> dict:
     zarr_store = ujson.loads(gzip.decompress(compressed).decode())
     return zarr_store
 
+HORIZONS = {
+    "hrrr-conus-sfcf": [np.timedelta64(val, "h") for val in [6, 24, 48]],
+    "hrrr-conus-subhf": [np.timedelta64(val, "h") for val in [6, 12, 18]],
+    "gfs-atmos-pgrb2-0p25": [np.timedelta64(val, "h") for val in [48, 96, 168, 384]],
+}
+
+
 class CamusProvider(Plugin):
     name = 'xreds_datasets'
     dataset_mapping: dict = {}
@@ -487,19 +494,33 @@ class CamusProvider(Plugin):
 
         fs = fsspec.filesystem('file')
         with fs.open(settings.datasets_mapping_file, 'r') as f:
-            self.dataset_mapping = json.load(f)
+            dataset_mapping = json.load(f)
 
         hrrr_coords = xr.open_zarr(
             "gs://inbox.prod.camus-infra.camus.store/nodd/hrrr/conus/projected_coordinates/v1.0/coords.zarr"
         )
         logger.info("Loaded static hrrr coords")
 
-        for key, dataset_spec in self.dataset_mapping.items():
+        tstamp = pd.Timestamp.now()
+
+        for key, dataset_spec in dataset_mapping.items():
             dataset_spec["metadata"] = read_store(dataset_spec["metadata_path"])
+            dataset_spec["tstamp"] = tstamp
             if "hrrr" in key:
                 dataset_spec["coords"] = hrrr_coords
 
-        logger.info("Loaded static dataset metadata for %s", self.dataset_mapping.keys())
+
+        dataset_horizon_mapping = {}
+        for key, dataset_spec in dataset_mapping.items():
+            for horizon in HORIZONS[key]:
+                dspec = copy.deepcopy(dataset_spec)
+                dspec["horizon"] = horizon
+                dataset_horizon_mapping[f"{key}_{str(horizon.astype(int))}-hours"] = dspec
+
+
+        logger.info("Loaded static dataset metadata for %s", dataset_horizon_mapping.keys())
+
+        self.dataset_mapping = dataset_horizon_mapping
 
     @hookimpl
     def get_datasets(self):
@@ -525,19 +546,45 @@ class CamusProvider(Plugin):
         dataset_index = dataset_spec["index"]
         dataset_vars = dataset_spec["variables"]
         dataset_metadata = dataset_spec["metadata"]
+        dataset_horizon = dataset_spec["horizon"]
+        dataset_tstamp = dataset_spec["tstamp"]
 
+        if dataset_id.startswith("hrrr-conus-sfcf"):
+            runtime_step = (
+                np.timedelta64(6, "h")
+                if dataset_horizon > np.timedelta64(18, "h")
+                else np.timedelta64(1, "h")
+            )
 
-        if "hrrr-conus-sfcf" == dataset_id:
+            selected_horizons = pd.timedelta_range(
+                start=dataset_horizon - runtime_step,
+                end=dataset_horizon,
+                freq="60min",
+                closed="right",
+                name=f"{dataset_horizon.astype(int)} hour"
+            )
+            start = dataset_tstamp.floor("D") - np.timedelta64(1, "D")
+            naive_first_runtime = start - selected_horizons[0]
+
+            runtime_offset = (
+                    pd.Timestamp(naive_first_runtime).floor(pd.Timedelta(runtime_step))
+                    - naive_first_runtime
+            )
+
             axes = [
                 pd.Index(
-                    [
-                        pd.timedelta_range(start="300 minutes", end="360 minutes", freq="60min", closed="left", name="005 hour"),
-                    ],
+                    [selected_horizons],
                     name="step"
                 ),
-                pd.date_range("2023-10-28T00:00", "2023-10-30T12:00", freq="60min", name="valid_time")
+                pd.date_range(
+                    start=start - runtime_step + runtime_offset,
+                    end=dataset_tstamp.floor("h") + dataset_horizon,
+                    freq="60min",
+                    name="valid_time"
+                )
             ]
-        elif "hrrr-conus-subhf" == dataset_id:
+
+        elif dataset_id.startswith("hrrr-conus-subhf"):
             axes = [
                 pd.Index(
                     [
@@ -549,7 +596,7 @@ class CamusProvider(Plugin):
                 pd.date_range("2023-10-28T00:15", "2023-10-30T12:00", freq="15min", name="valid_time")
             ]
 
-        elif "gfs-atmos-pgrb2-0p25" in dataset_id:
+        elif dataset_id.startswith("gfs-atmos-pgrb2-0p25"):
 
             axes = [
                 pd.Index(
