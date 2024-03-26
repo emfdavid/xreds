@@ -57,7 +57,7 @@ docker build -t xreds:latest .
 Once built, it requires a few things to be run: The 8090 port to be exposed, and a volume for the datasets to live in, and the environment variable pointing to the dateset json file.
 
 ```bash 
-docker run -p 8090:8090 -e "datasets_mapping_file=/path/to/datasets.json" -v "/path/to/datasets:/opt/xreds/datasets" xreds:latest
+docker run -p 8080:8080 -e "datasets_mapping_file=/opt/xreds/datasets/camus_datasets.json" -v "/home/builder/projects/xreds/datasets:/opt/xreds/datasets" xreds:latest
 ```
 
 ## Specifying Datasets
@@ -90,14 +90,11 @@ Currently `zarr`, `netcdf`, and [`kerchunk`](https://github.com/fsspec/kerchunk)
 First follow instructions above to build the docker image tagged `xreds:latest`. Then the`xreds:latest` image needs to be tagged and deployed to the relevant docker registry. 
 
 ```bash
-# Auth with ECR
-aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/m2c5k9c1
-
 # Tag the image
-docker tag xreds:latest public.ecr.aws/m2c5k9c1/nextgen-dmac/xreds:latest
+docker tag xreds:latest us-central1-docker.pkg.dev/camus-infra/xreds/xreds:latest
 
 # Push the image
-docker push public.ecr.aws/m2c5k9c1/nextgen-dmac/xreds:latest
+docker push us-central1-docker.pkg.dev/camus-infra/xreds/xreds:latest
 ```
 
 Once pushed, we can deploy it to the cluster with the following command:

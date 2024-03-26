@@ -3,10 +3,14 @@ version: '3'
 services:
   xreds: 
     image: xreds:latest
-    volumes:
-      - "./datasets:/opt/xreds/datasets"
+#    entrypoint: "/bin/bash"
+#    command: ["-c", "sleep 10000"]
+#    volumes:
+#      - type: bind
+#        source: "/home/builder/projects/xreds/datasets"
+#        target: "/opt/xreds/datasets"
     ports: 
-      - "8090:8090"
+      - "8080:8080"
     environment:
-      - PORT=8090
-      - datasets_mapping_file=/opt/xreds/datasets/datasets.json
+      - PORT=8080
+      - datasets_mapping_file=/opt/xreds/datasets/camus_datasets.json

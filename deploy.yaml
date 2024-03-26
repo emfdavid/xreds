@@ -17,13 +17,18 @@ spec:
     spec:
       containers:
       - name: xreds
-        image: public.ecr.aws/m2c5k9c1/nextgen-dmac/xreds:latest
+        image: us-central1-docker.pkg.dev/camus-infra/xreds/xreds:latest
         imagePullPolicy: "Always"
+        resources:
+          requests:
+            cpu: "4"
+            ephemeral-storage: 10Gi
+            memory: 8Gi
         ports:
-        - containerPort: 8090
+        - containerPort: 8080
         env:
         - name: datasets_mapping_file
-          value: "s3://nextgen-dmac/kerchunk/datasets.json"
+          value: "/opt/xreds/datasets/camus_datasets.json"
 ---
 apiVersion: v1
 kind: Service
@@ -31,12 +36,14 @@ metadata:
   name: xreds-service
   labels:
     app: xreds
+  annotations:
+    grid.dev/camus_external_name: xreds
 spec:
   selector:
     app.kubernetes.io/name: xreds
   ports:
   - protocol: TCP
-    port: 8090
-    targetPort: 8090
+    port: 8080
+    targetPort: 8080
   selector:
     app: xreds

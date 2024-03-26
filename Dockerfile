@@ -50,9 +50,13 @@ COPY app.py ./app.py
 # Copy the frontend build 
 COPY --from=0 /opt/viewer/dist ./viewer/dist 
 
+RUN mkdir -p /opt/xreds/datasets
+
 # Set the port to run the server on
-ENV PORT 8090
+ENV PORT 8080
 ENV ROOT_PATH "/xreds/"
+
+COPY datasets/camus_datasets.json ./datasets/camus_datasets.json
 
 # Run the webserver
 CMD ["sh", "-c", "gunicorn --workers=1 --worker-class=uvicorn.workers.UvicornWorker --log-level=debug --bind=0.0.0.0:${PORT} app:app"]
