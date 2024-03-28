@@ -552,7 +552,8 @@ class CamusProvider(Plugin):
         dataset_vars = dataset_spec["variables"]
         dataset_metadata = dataset_spec["metadata"]
         dataset_horizon = dataset_spec["horizon"]
-        dataset_tstamp = dataset_spec["tstamp"]
+        # Reset the reference time!
+        dataset_tstamp = dataset_spec["tstamp"] = pd.Timestamp.now()
 
         if dataset_id.startswith("hrrr-conus-sfcf"):
             runtime_step = (

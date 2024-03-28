@@ -54,7 +54,7 @@ RUN mkdir -p /opt/xreds/datasets
 
 # Set the port to run the server on
 ENV PORT 8080
-ENV ROOT_PATH "/xreds/"
+ENV ROOT_PATH "/"
 
 COPY datasets/camus_datasets.json ./datasets/camus_datasets.json
 

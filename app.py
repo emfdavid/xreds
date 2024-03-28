@@ -22,7 +22,7 @@ rest = xpublish.Rest(
     app_kws=dict(
         title='XREDS', 
         description='XArray Environmental Data Services exposes environmental model data in common data formats for digestion in applications and notebooks',
-        openapi_url='/xreds.json'
+        #openapi_url='/xreds.json'
     ),
     cache_kws=dict(available_bytes=1e9),
     datasets=None
